@@ -13,7 +13,7 @@ def train():
     model = LstmModel(226, 32, 64)
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    for epoch in range(20):
+    for epoch in range(2):
         for ii, (data, label) in enumerate(data_loader):
 
             x = data.transpose(1,0)#(4,128) -> (128,4)
