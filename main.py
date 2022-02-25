@@ -1,9 +1,11 @@
+from config import Config
 from data import NERDataset
 import torch
 from torch.utils.data import DataLoader
 from models import DNNModel, LstmModel
 
-dataset = NERDataset()
+opt = Config()
+dataset = NERDataset(opt)
 id2word, id2label = dataset.getvocab()
 data_loader = DataLoader(dataset, batch_size=4)
 # model = DNNModel()

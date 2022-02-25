@@ -1,12 +1,16 @@
+import os.path
+
 import torch
 from torch.utils.data import Dataset
+import numpy as np
 
 
 class NERDataset(Dataset):
-    def __init__(self):
+    def __init__(self, opt):
 
-        self.data_path = 'D:/pycode/torchtest/data/测试用.txt'
-        self.pad_size = 128
+        # self.data_path = 'D:/pycode/torchtest/data/测试用.txt'
+        self.data_path = opt.data_path + opt.train_file
+        self.pad_size = opt.maxlen
         f_r = open(self.data_path, 'r', encoding='utf-8')
         lines = f_r.readlines()
         context = []
@@ -59,6 +63,12 @@ class NERDataset(Dataset):
         self.label2id = label2id
         self.id2word = id2word
         self.id2label = id2label
+        if not os.path.exists(opt.model_path):
+            os.makedirs(opt.model_path)
+        np.savez_compressed(opt.model_path +'/test',
+                            word2id=word2id,
+                            id2word=id2word,
+                            id2label=id2label)
 
     def __getitem__(self, index):
         data = self.data[index]
@@ -89,6 +99,3 @@ class NERDataset(Dataset):
 
     def getvocab(self):
         return self.id2word, self.id2label
-
-
-
