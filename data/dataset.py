@@ -33,6 +33,7 @@ class NERDataset(Dataset):
         id2label = {}
         id2word = {}
         word2id['PAD'] = 0
+        word2id['UNK'] = 1
         label2id['PAD'] = 0
 
         # 得到每一句的文本数据和标签序列
@@ -65,7 +66,7 @@ class NERDataset(Dataset):
         self.id2label = id2label
         if not os.path.exists(opt.model_path):
             os.makedirs(opt.model_path)
-        np.savez_compressed(opt.model_path +'/test',
+        np.savez_compressed(opt.model_path +'/dicts',
                             word2id=word2id,
                             id2word=id2word,
                             id2label=id2label)

@@ -14,4 +14,5 @@ class Config(object):
     train = True
     val = True
     test = True
+    embedding_dim = 32
 
