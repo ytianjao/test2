@@ -62,9 +62,9 @@ def train(opt):
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
     for epoch in range(opt.epoch):
         for batch, (data, label) in enumerate(train_data_loader):
-            x = data.transpose(1,0)#(batch_size,seq_len) -> (seq_len,batch_size)
+            # x = data.transpose(1,0)
             optimizer.zero_grad()
-            y = model(x)[0]#(batch_size*seq_len,label_size)
+            y = model(data)[0]#(batch_size*seq_len,label_size)
             label = label.transpose(1,0)#(batch_size,seq_len) -> (seq_len,batch_size)
             loss = criterion(y, label.reshape(-1))
 
@@ -74,7 +74,7 @@ def train(opt):
 
 def test(opt):
     dataset = NERDataset(opt, test=True)
-    test_data_loader = DataLoader(dataset, batch_size=opt.batch_size)
+    test_data_loader = DataLoader(dataset, batch_size=opt.batch_size)#利用训练集的word2id进行转换
     id2word, id2label = dataset.getvocab()
     vocab_size = len(id2word)
     label_size = len(id2label)
@@ -84,8 +84,8 @@ def test(opt):
         model = LstmModel(vocab_size, opt.embedding_dim, label_size)
         model.load(opt.model_path)
         model.eval()
-        x = data.transpose(1,0)
-        y = model(x)[0]
+        # x = data.transpose(1,0)
+        y = model(data)[0]
         y = y.reshape(seq_len,batch_size,label_size)
         y = y.transpose(1,0)
         y = torch.nn.Softmax(2)(y)

@@ -11,6 +11,7 @@ class LstmModel(BasicModel):
         self.linear1 = torch.nn.Linear(self.hidden_dim*2, label_size)#默认隐藏层初始化使输出变成2倍
 
     def forward(self, input):
+        input = input.transpose(1,0)#(batch_size,seq_len) -> (seq_len,batch_size)
         seq_len, batch_size = input.size()
         embds = self.embeddings(input)#(seq_len,batch_size, embdding_dim)
         output, hidden = self.lstm(embds)#output:(seq_len,batch_size, hidden_dim*2)

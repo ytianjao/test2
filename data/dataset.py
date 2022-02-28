@@ -91,9 +91,9 @@ class NERDataset(Dataset):
 
 
         # 补全到固定长度
-        while len(word2id_list) < 128:
+        while len(word2id_list) < self.pad_size:
             word2id_list.append(self.word2id['PAD'])
-        while len(label2id_list) < 128:
+        while len(label2id_list) < self.pad_size:
             label2id_list.append(self.label2id['O'])
         # 转换成tensor格式
         word2id_list = torch.tensor(word2id_list).view(-1)
