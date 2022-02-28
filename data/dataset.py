@@ -6,11 +6,19 @@ import numpy as np
 
 
 class NERDataset(Dataset):
-    def __init__(self, opt):
+    def __init__(self, opt, train = False,val = False, test = False):
 
-        # self.data_path = 'D:/pycode/torchtest/data/测试用.txt'
-        self.data_path = opt.data_path + opt.train_file
+        if train:
+            self.data_path = opt.data_path + opt.train_file
+        elif test:
+            self.data_path = opt.data_path + opt.test_file
+        elif val:
+            self.data_path = opt.data_path + opt.val_file
+        else:
+            raise Exception("dataset参数中至少有一个是True")
         self.pad_size = opt.maxlen
+
+        #读取数据集，以句子为单位
         f_r = open(self.data_path, 'r', encoding='utf-8')
         lines = f_r.readlines()
         context = []
@@ -28,15 +36,10 @@ class NERDataset(Dataset):
         context.append(sentence)
 
         #       文字转数字工具
-        word2id = {}
-        label2id = {}
-        id2label = {}
-        id2word = {}
-        word2id['PAD'] = 0
-        word2id['UNK'] = 1
-        label2id['PAD'] = 0
+        word2id, label2id = self.load_data(opt)#训练和测试过程都使用训练集的word2id，测试集中的未登录词在后面处理
+        id2word, id2label = {}, {}
 
-        # 得到每一句的文本数据和标签序列
+        # 得到每一句的汉字序列和标签序列
         data = []
         label = []
         for i in range(len(context)):
@@ -45,31 +48,27 @@ class NERDataset(Dataset):
             tmp_label = []
             for text in sentence:
                 text = text.split(' ')
-                if text[0] not in word2id.keys():
-                    word2id[text[0]] = len(word2id)
-                if text[-1] not in label2id.keys():
-                    label2id[text[-1]] = len(label2id)
                 tmp_data.append(text[0])
                 tmp_label.append(text[-1])
 
             data.append(tmp_data)
-            label.append(tmp_label)
+            label.append(tmp_label)#到这一步，保存的仍是汉字，不是id
+
+        #工具，方便预测值转汉字
         for key, value in word2id.items():
             id2word[value] = key
         for key, value in label2id.items():
             id2label[value] = key
+
+
         self.data = data
         self.label = label
         self.word2id = word2id
         self.label2id = label2id
         self.id2word = id2word
         self.id2label = id2label
-        if not os.path.exists(opt.model_path):
-            os.makedirs(opt.model_path)
-        np.savez_compressed(opt.model_path +'/dicts',
-                            word2id=word2id,
-                            id2word=id2word,
-                            id2label=id2label)
+
+
 
     def __getitem__(self, index):
         data = self.data[index]
@@ -78,17 +77,24 @@ class NERDataset(Dataset):
         # 将文本转换成数字
         word2id_list = []
         for word in data:
-            word2id_list.append(self.word2id[word])
+            if word in self.word2id.keys():
+                word2id_list.append(self.word2id[word])
+            else:
+                word2id_list.append(self.word2id['UNK'])#处理未登录词
 
         label2id_list = []
         for word_label in label:
-            label2id_list.append(self.label2id[word_label])
+            if word_label in self.label2id.keys():
+                label2id_list.append(self.label2id[word_label])
+            else:
+                raise Exception('训练集没有当前标签，请调整训练集')
+
 
         # 补全到固定长度
         while len(word2id_list) < 128:
             word2id_list.append(self.word2id['PAD'])
         while len(label2id_list) < 128:
-            label2id_list.append(self.label2id['PAD'])
+            label2id_list.append(self.label2id['O'])
         # 转换成tensor格式
         word2id_list = torch.tensor(word2id_list).view(-1)
         label2id_list = torch.tensor(label2id_list).view(-1)
@@ -100,3 +106,9 @@ class NERDataset(Dataset):
 
     def getvocab(self):
         return self.id2word, self.id2label
+
+    def load_data(self, opt):
+        dataset = np.load(opt.model_path +'dicts.npz', allow_pickle=True)
+        word2id = dataset['word2id'].item()
+        label2id = dataset['label2id'].item()
+        return word2id, label2id

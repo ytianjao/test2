@@ -15,13 +15,13 @@ class BasicModel(torch.nn.Module):
                     self.load_state_dict(torch.load(model_path + file))
 
 
-    def save(self, name=None):
+    def save(self, model_path, name=None):
         if name is None:
-            prefix = './checkpoints/' + self.model_name + '-'
+            prefix = model_path+self.model_name + '-'
             name = time.strftime(prefix + '%m%d-%H-%M-%S.pth')
         # print(os.listdir('./checkpoints/'))
-        list_dir = os.listdir('./checkpoints/')
+        list_dir = os.listdir(model_path)
         for file in list_dir:
-            if os.path.isfile('./checkpoints/' + file):
-                os.remove('./checkpoints/' + file)
+            if file.endswith('.pth'):
+                os.remove(model_path + file)
         torch.save(self.state_dict(), name)

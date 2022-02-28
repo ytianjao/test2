@@ -4,26 +4,22 @@ import torch
 from torch.utils.data import DataLoader
 from models import DNNModel, LstmModel
 import numpy as np
-
-opt = Config()
-dataset = NERDataset(opt)
-id2word, id2label = dataset.getvocab()
-vocab_size = len(id2word)
-data_loader = DataLoader(dataset, batch_size=4)
-# model = DNNModel()
-
-'''
-逻辑：训练集读取：保存字典表、word2id、id2word（非必须）、label2id、id2label
-在训练时直接查询字典表构造Iter
-测试集读取：读取训练集字典表，未登录词统一UNK或随机生成
-'''
+import pickle
+import os
 
 
-def read_data(data_path):
+def read_train_data(data_path):
+    """
+    在程序最开始执行，负责读取训练集，并保存word2id、label2id
+    保存为npz和pickle两种格式
+    :param data_path:
+    :return:
+    """
     word2id = {}
     label2id = {}
     word2id['PAD'] = 0
     word2id['UNK'] = 1
+    # label2id['PAD'] = 0
     f_r = open(data_path, 'r', encoding='utf-8')
     for line in f_r.readlines():
         line = line.strip()
@@ -34,54 +30,79 @@ def read_data(data_path):
                 word2id[line.split(' ')[0]] = len(word2id)
             if line.split(' ')[-1] not in label2id.keys():
                 label2id[line.split(' ')[-1]] = len(label2id)
-    np.savez(opt.model_path +'/dicts',
-                        word2id=word2id,
-                        label2id=label2id)
-def data_loader():
-    dataset = np.load(opt.model_path +'/dicts.npz', allow_pickle=True)
-    word2id = dataset['word2id'].item()
+    if not os.path.exists(opt.model_path):
+        os.makedirs(opt.model_path)
+    np.savez(opt.model_path +'dicts',
+             word2id=word2id,
+             label2id=label2id)
+    with open(opt.model_path+'label2id.pkl', 'wb') as f:
+        pickle.dump(label2id, f)
+        f.close()
+
+    with open(opt.model_path+'word2id.pkl', 'wb') as f:
+        pickle.dump(word2id, f)
+        f.close()
+
+def train(opt):
+    """
+    训练函数，执行流程为：读取训练集-》模型初始化-》按批次训练
+    :return:
+    """
+
+    read_train_data(opt.data_path + opt.train_file)#只在训练过程中保存训练集的word2id充当字典
+    dataset = NERDataset(opt, train=True)#读取训练集，以句子为单位读取数据，并利用word2id将汉字转化为id，细节写在源码注释中
+    id2word, id2label = dataset.getvocab()#工具函数，备用
+    vocab_size = len(id2word)
+    label_size = len(id2label)#获得字典大小和标签种类数，下一步模型初始化使用
+    train_data_loader = DataLoader(dataset, batch_size=4)#将dataset包装
 
 
-
-def train():
-    read_data(opt.data_path + opt.train_file)
-    model = LstmModel(vocab_size, opt.embedding_dim)
+    model = LstmModel(vocab_size, opt.embedding_dim, label_size)#模型初始化
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    for epoch in range(2):
-        for ii, (data, label) in enumerate(data_loader):
-
+    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+    for epoch in range(20):
+        for batch, (data, label) in enumerate(train_data_loader):
             x = data.transpose(1,0)#(4,128) -> (128,4)
             optimizer.zero_grad()
-
-            # y = model(x)#(512,17)
-            y = model(x)[0]#(512,17)
-
+            y = model(x)[0]#(512,16)
             label = label.transpose(1,0)#(4,128) ->(128,4)
             loss = criterion(y, label.reshape(-1))
 
             loss.backward()
             optimizer.step()
-    model.save()
+    model.save(opt.model_path)
 
-def test():
-    for ii, (data, label) in enumerate(data_loader):
-        model = LstmModel(vocab_size, opt.embedding_dim)
+def test(opt):
+    dataset = NERDataset(opt, test=True)
+    test_data_loader = DataLoader(dataset, batch_size=4)
+    id2word, id2label = dataset.getvocab()
+    vocab_size = len(id2word)
+    label_size = len(id2label)
+
+    for batch, (data, label) in enumerate(test_data_loader):
+        model = LstmModel(vocab_size, opt.embedding_dim, label_size)
         model.load(opt.model_path)
         model.eval()
         x = data.transpose(1,0)
-        # y = model(x)
         y = model(x)[0]
-        y = y.reshape(128,4,17)
+        y = y.reshape(128,4,label_size)
         y = y.transpose(1,0)
         y = torch.nn.Softmax(2)(y)
 
         for i in range(4):
             for ii in range(128):
                 print(id2label[y[i][ii].topk(1)[1].item()])
-# train()
-# test()
-read_data(opt.data_path + opt.train_file)
+
+
+
+if __name__ == '__main__':
+    opt = Config()
+    read_train_data(opt.data_path + opt.train_file)
+    if opt.train:
+        train(opt)
+    if opt.test:
+        test(opt)
+
 
 
 
