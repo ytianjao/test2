@@ -3,7 +3,7 @@ class Config(object):
     train_file = '测试用.txt'
     val_file = '测试用.txt'
     test_file = '测试用.txt'
-    lr = 1e-3
+    lr = 1e-2
     weight_decay = 1e-4
     use_gpu = False
     epoch = 20

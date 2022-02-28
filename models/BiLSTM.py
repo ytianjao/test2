@@ -12,8 +12,8 @@ class LstmModel(BasicModel):
 
     def forward(self, input):
         seq_len, batch_size = input.size()
-        embds = self.embeddings(input)
-        output, hidden = self.lstm(embds)
+        embds = self.embeddings(input)#(seq_len,batch_size, embdding_dim)
+        output, hidden = self.lstm(embds)#output:(seq_len,batch_size, hidden_dim*2)
         output = self.linear1(output.view(seq_len * batch_size, -1))
         return output, hidden
 

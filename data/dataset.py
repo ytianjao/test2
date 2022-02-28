@@ -98,7 +98,6 @@ class NERDataset(Dataset):
         # 转换成tensor格式
         word2id_list = torch.tensor(word2id_list).view(-1)
         label2id_list = torch.tensor(label2id_list).view(-1)
-        # label2id_list=torch.zeros(128, 17).scatter_(1, label2id_list, 1)
         return word2id_list, label2id_list
 
     def __len__(self):

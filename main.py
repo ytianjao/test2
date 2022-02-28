@@ -54,18 +54,18 @@ def train(opt):
     id2word, id2label = dataset.getvocab()#工具函数，备用
     vocab_size = len(id2word)
     label_size = len(id2label)#获得字典大小和标签种类数，下一步模型初始化使用
-    train_data_loader = DataLoader(dataset, batch_size=4)#将dataset包装
+    train_data_loader = DataLoader(dataset, batch_size=opt.batch_size)#将dataset包装
 
 
     model = LstmModel(vocab_size, opt.embedding_dim, label_size)#模型初始化
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
-    for epoch in range(20):
+    for epoch in range(opt.epoch):
         for batch, (data, label) in enumerate(train_data_loader):
-            x = data.transpose(1,0)#(4,128) -> (128,4)
+            x = data.transpose(1,0)#(batch_size,seq_len) -> (seq_len,batch_size)
             optimizer.zero_grad()
-            y = model(x)[0]#(512,16)
-            label = label.transpose(1,0)#(4,128) ->(128,4)
+            y = model(x)[0]#(batch_size*seq_len,label_size)
+            label = label.transpose(1,0)#(batch_size,seq_len) -> (seq_len,batch_size)
             loss = criterion(y, label.reshape(-1))
 
             loss.backward()
@@ -74,23 +74,24 @@ def train(opt):
 
 def test(opt):
     dataset = NERDataset(opt, test=True)
-    test_data_loader = DataLoader(dataset, batch_size=4)
+    test_data_loader = DataLoader(dataset, batch_size=opt.batch_size)
     id2word, id2label = dataset.getvocab()
     vocab_size = len(id2word)
     label_size = len(id2label)
 
     for batch, (data, label) in enumerate(test_data_loader):
+        batch_size, seq_len = data.size()
         model = LstmModel(vocab_size, opt.embedding_dim, label_size)
         model.load(opt.model_path)
         model.eval()
         x = data.transpose(1,0)
         y = model(x)[0]
-        y = y.reshape(128,4,label_size)
+        y = y.reshape(seq_len,batch_size,label_size)
         y = y.transpose(1,0)
         y = torch.nn.Softmax(2)(y)
 
-        for i in range(4):
-            for ii in range(128):
+        for i in range(batch_size):
+            for ii in range(seq_len):
                 print(id2label[y[i][ii].topk(1)[1].item()])
 
 
